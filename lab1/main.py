@@ -3,6 +3,7 @@ import numpy as np
 from scipy.signal import convolve2d
 import cv2
 import matplotlib.pyplot as plt
+from scipy.ndimage.interpolation import map_coordinates
 
 # Implement Single scale Lucas - kanade function
 
@@ -55,7 +56,6 @@ def LK_equation(I, J, w):
     # print(e.shape)
     d = np.linalg.solve(T, e)
     print(d)
-    d = d.reshape(rows, cols, 2)
     print(f"d: {d.shape}")
     # print(d.shape)
 
@@ -69,13 +69,18 @@ if __name__ == "__main__":
     w = np.ones((21, 21))
 
     V = LK_equation(I, J, w)
-    # Calc error
-    # error = J-I
-    # error = np.linalg.norm(error)
 
-    # # Calc difference
-    # J_diff = J + V
-    # diff = np.linalg.norm(J_diff - I)
-    # print(f"Error: {error} \n Difference: {diff} ")
+    # Calc error
+    error = I - J
+    error = np.linalg.norm(error)
+
+    # Calc difference
+    x, y = np.meshgrid(np.arange(J.shape[1]), np.arange(J.shape[0]))
+    x_v = x + V[..., 0]
+    y_v = y + V[..., 1]
+    J_xv = map_coordinates(J, [x_v, y_v], order=1)
+    diff = I - J_xv
+    diff = np.linalg.norm(diff)
+    print(f"Error: {error} \n Difference: {diff} ")
     lab1.gopimage(V)
     plt.show()
