@@ -5,11 +5,12 @@ import scipy
 import matplotlib.pyplot as plt
 from scipy.interpolate import RectBivariateSpline
 from PIL import Image
+import cv2
 
 # Implement Single scale Lucas - kanade function
 
 
-def LK_equation(I, J, J_org, k_size, sigma, w, iterations):
+def LK_equation(I, J, k_size, sigma, w, iterations):
 
     M = I.shape[0]
     N = I.shape[1]
@@ -66,12 +67,21 @@ def LK_equation(I, J, J_org, k_size, sigma, w, iterations):
     # print(f"d: {d.shape}")
 
     if iterations > 0:
-        Jnew = J + 0.5*g_x + 0.5*g_y  # J(x+dTot) by interpolating
-        return LK_equation(I, Jnew, J_org, k_size, sigma, w, iterations-1)
 
+        # Warping
+        # Create map of x and y coordinates for each pixel
+        d.astype(np.float32)
+        map_x, map_y = np.float32(np.meshgrid(
+            np.arange(J.shape[1]), np.arange(J.shape[0])))
+
+        # Add motion field to the map
+        map_x += d[:, :, 0]
+        map_y += d[:, :, 1]
+        Jnew = cv2.remap(I, map_x, map_y, cv2.INTER_LINEAR)
+        return LK_equation(I, Jnew, k_size, sigma, w, iterations-1)
     else:
         d = (np.linalg.solve(T, e))
-        error, diff, Jv = errorC(I, J_org, d)
+        error, diff, Jv = errorC(I, J, d)
         print("Error: ", error)
         print("Difference: ", diff)
         return d, Jv
@@ -122,7 +132,7 @@ def LK_equation_multi(I, J, numScales):
         # print('n = ', n)
         sc = 2 ** (n-1)
         # def LK_equation(I, J, J_org, k_size, sigma, w, iterations):
-        V, Jv = LK_equation(I, Jn, J, k_size=sc*2,
+        V, Jv = LK_equation(I, J, k_size=sc*2,
                             sigma=sc * 0.1, w=21, iterations=0)
 
         Vtot += V
@@ -142,7 +152,7 @@ if __name__ == "__main__":
     w = 21
     iterations = 1
 
-    d, Jv = LK_equation(I, J, J, k_size, sigma, w, iterations)
+    d, Jv = LK_equation(I, J, k_size, sigma, w, iterations)
     error, diff, Jv = errorC(I, J, d)
 
     # def LK_equation_multi(I, J, numScales, *args):
